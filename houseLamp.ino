@@ -21,10 +21,11 @@
 #include <SPI.h>
 #include <WiFi.h>
 #include "FastLED.h"
+#include <SD.h>
 
 
 // How many leds are in the strip?
-#define NUM_LEDS 9
+#define NUM_LEDS 18
 
 // Data pin that led data will be written out over
 #define DATA_PIN 5
@@ -78,6 +79,23 @@ void setup() {
   printWifiStatus();
 
   FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+
+  if (!SD.begin(4)) {
+    Serial.println("initialization failed!");
+    while (1);
+  }
+  Serial.println("initialization done.");
+
+  if (SD.exists("example.txt")) {
+    Serial.println("example.txt exists.");
+  } else {
+    Serial.println("example.txt doesn't exist.");
+  }
+
+  // open a new file and immediately close it:
+  Serial.println("Creating example.txt...");
+  myFile = SD.open("example.txt", FILE_WRITE);
+  myFile.close();
 
 
 }
