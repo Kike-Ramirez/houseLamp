@@ -53,7 +53,7 @@ EthernetServer server(80);
 
 bool lampON = true;
 
-File myFile;
+File myFile, root;
 
 
 void setup() {
@@ -84,16 +84,16 @@ void setup() {
 
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
-  myFile = SD.open("index.html", FILE_READ);
-
+  myFile = SD.open("INDEX~1.HTM");
+  
   // if the file opened okay, write to it:
-  if (myFile) {
-    Serial.print("Ok reading index.html...");
+  while (!myFile) {
+    Serial.println("Error reading index.html... Retry in 2 seconds...");
+    delay(2000);
 
-  } else {
-    // if the file didn't open, print an error:
-    Serial.println("error opening index.html");
-  }
+  } 
+  
+  Serial.println("Succesfully opened index.html");
 
 }
 
@@ -166,6 +166,28 @@ void loop() {
     
   }
 }
-
-
+//
+//void printDirectory(File dir, int numTabs) {
+//  while (true) {
+//
+//    File entry =  dir.openNextFile();
+//    if (! entry) {
+//      // no more files
+//      break;
+//    }
+//    for (uint8_t i = 0; i < numTabs; i++) {
+//      Serial.print('\t');
+//    }
+//    Serial.print(entry.name());
+//    if (entry.isDirectory()) {
+//      Serial.println("/");
+//      printDirectory(entry, numTabs + 1);
+//    } else {
+//      // files have sizes, directories do not
+//      Serial.print("\t\t");
+//      Serial.println(entry.size(), DEC);
+//    }
+//    entry.close();
+//  }
+//}
 
