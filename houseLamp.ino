@@ -1,3 +1,5 @@
+#include <SD.h>
+
 /*
   WiFi Web Server
 
@@ -19,9 +21,8 @@
  */
 
 #include <SPI.h>
-#include <WiFi.h>
+#include <Ethernet.h>
 #include "FastLED.h"
-#include <SD.h>
 
 
 // How many leds are in the strip?
@@ -37,13 +38,23 @@
 CRGB leds[NUM_LEDS];
 
 // Network settings
-char ssid[] = "CarmenLauraKike";      // your network SSID (name)
-char pass[] = "Carmen2016";   // your network password
-int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 
-int status = WL_IDLE_STATUS;
+// Enter a MAC address and IP address for your controller below.
+// The IP address will be dependent on your local network:
+byte mac[] = {
+  0x90, 0xA2, 0xDA, 0x0F, 0x5A, 0x93
+};
+IPAddress ip(192, 168, 0, 185);
 
-WiFiServer server(80);
+// Initialize the Ethernet server library
+// with the IP address and port you want to use
+// (port 80 is default for HTTP):
+EthernetServer server(80);
+
+bool lampON = true;
+
+File myFile;
+
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -52,33 +63,18 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-  // check for the presence of the shield:
-  if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("WiFi shield not present");
-    // don't continue:
-    while (true);
-  }
-
-  String fv = WiFi.firmwareVersion();
-  if (fv != "1.1.0") {
-    Serial.println("Please upgrade the firmware");
-  }
-
-  // attempt to connect to Wifi network:
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
-
-    // wait 10 seconds for connection:
-    delay(10000);
-  }
+  Serial.println("Serial port opened...");
+  
+    // start the Ethernet connection and the server:
+  Ethernet.begin(mac, ip);
   server.begin();
-  // you're connected now, so print out the status:
-  printWifiStatus();
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
+
 
   FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+
+  Serial.print("Initializing SD card...");
 
   if (!SD.begin(4)) {
     Serial.println("initialization failed!");
@@ -86,24 +82,25 @@ void setup() {
   }
   Serial.println("initialization done.");
 
-  if (SD.exists("example.txt")) {
-    Serial.println("example.txt exists.");
+  // open the file. note that only one file can be open at a time,
+  // so you have to close this one before opening another.
+  myFile = SD.open("index.html", FILE_READ);
+
+  // if the file opened okay, write to it:
+  if (myFile) {
+    Serial.print("Ok reading index.html...");
+
   } else {
-    Serial.println("example.txt doesn't exist.");
+    // if the file didn't open, print an error:
+    Serial.println("error opening index.html");
   }
-
-  // open a new file and immediately close it:
-  Serial.println("Creating example.txt...");
-  myFile = SD.open("example.txt", FILE_WRITE);
-  myFile.close();
-
 
 }
 
 
 void loop() {
   // listen for incoming clients
-  WiFiClient client = server.available();
+  EthernetClient client = server.available();
   if (client) {
     Serial.println("new client");
     // an http request ends with a blank line
@@ -122,11 +119,20 @@ void loop() {
           client.println("Connection: close");  // the connection will be closed after completion of the response
           client.println("Refresh: 5");  // refresh the page automatically every 5 sec
           client.println();
-          client.println("<!DOCTYPE HTML>");
-          client.println("<html>");
-          client.println("Hello house!");
-          client.println("</html>");
+//          client.println("<!DOCTYPE html>");
+//          client.println("<html>");
+//          client.println("<body>");
+//          client.println("<div>Hello World Kike</div>");
+//          client.println("</body>");
+//          
+//          client.println("</html> ");
 
+          if (myFile) {
+            while(myFile.available()) {
+              client.write(myFile.read()); // send web page to client
+            }
+            myFile.seek(0);
+          }
           // Move a single white led 
           for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
              // Turn our current led on to white, then show the leds
@@ -135,7 +141,7 @@ void loop() {
            }
         
            FastLED.show();
-           delay(10);
+           delay(100);
    
           break;
         }
@@ -154,24 +160,12 @@ void loop() {
     // close the connection:
     client.stop();
     Serial.println("client disonnected");
+
+    myFile.close();
+
+    
   }
 }
 
 
-void printWifiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
-}
 
