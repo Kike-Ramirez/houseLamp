@@ -9,14 +9,16 @@
   <link rel="stylesheet" href="https://www.kikeramirez.org/assets/houseLamp/theme.css"> </head>
 
 <body class="bg-primary">
-  <div class="py-5 text-center" style="background-image: url(&quot;https://www.kikeramirez.org/images/homeSite.png&quot;);">
+  <div class="py-5 text-center" style="background-size: cover; background-image: url(&quot;https://www.kikeramirez.org/images/LED.jpg&quot;);">
     <div class="container py-5">
       <div class="row">
         <div class="col-md-12">
           <h1 class="display-3 mb-4 text-primary">esquinita</h1>
           <p class="lead mb-5">...soy la lámpara <br>LED de la esquinita...</p>
-          <a href="./ON" class="btn btn-lg mx-1 btn-secondary">ON</a>
-          <a href="./OFF" class="btn btn-lg btn-primary mx-1">OFF</a>
+          <a href="./ON" class="col-12 btn btn-lg mx-1 btn-secondary">ON</a>
+          <a href="./OFF" class="col-12 btn btn-lg btn-primary mx-1">OFF</a>
+          <label for="led-color">Choose a color for LED :</label> 
+          <input id="led-color" type="color" class="col-12 form-control" style="min-height: 20%" value="#ffffff" />
         </div>
       </div>
     </div>
