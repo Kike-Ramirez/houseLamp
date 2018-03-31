@@ -1,28 +1,24 @@
-#include <SD.h>
 
 /*
-  WiFi Web Server
+  >> houseLamp v0.1 <<
 
- A simple web server that shows the value of the analog input pins.
- using a WiFi shield.
+  Description: Arduino sketch controlling a LED Strip in a domestic environment. It acts as a web server in a LAN offering
+  the user to control the LED Lamp remotely.
 
- This example is written for a network using WPA encryption. For
- WEP or WPA, change the Wifi.begin() call accordingly.
+  Author: Kike Ramírez
+  Date: 1/4/2018
 
- Circuit:
- * WiFi shield attached
- * Analog inputs attached to pins A0 through A5 (optional)
-
- created 13 July 2010
- by dlf (Metodo2 srl)
- modified 31 May 2012
- by Tom Igoe
+  Web: www.kikeramirez.org
+  Mail: info@kikeramirez.org
+  
+  License: MIT
 
  */
 
 #include <SPI.h>
 #include <Ethernet.h>
 #include "FastLED.h"
+#include <SD.h>
 
 
 // How many leds are in the strip?
@@ -52,6 +48,9 @@ IPAddress ip(192, 168, 0, 185);
 EthernetServer server(80);
 
 bool lampON = true;
+int brightness = 0;
+float fps = 1000.0 / 30;
+CRGB colorLED;
 
 File myFile, root;
 
@@ -64,15 +63,26 @@ void setup() {
   }
 
   Serial.println("Serial port opened...");
+
+  // Inicializamos y apagamos los LEDS de inicio...
+  FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+
+  initSequence();
   
+  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(255, 100, 40);          
+  }
+
+  FastLED.setBrightness(brightness);
+          
+  FastLED.show();
+             
     // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
   server.begin();
   Serial.print("server is at ");
   Serial.println(Ethernet.localIP());
-
-
-  FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
 
   Serial.print("Initializing SD card...");
 
@@ -94,100 +104,113 @@ void setup() {
   } 
   
   Serial.println("Succesfully opened index.html");
-
+  
 }
 
 
 void loop() {
-  // listen for incoming clients
-  EthernetClient client = server.available();
+
+  if (lampON) brightness++;
+  if (brightness > 255) brightness = 255;
+
+  if (!lampON) brightness--;
+  if (brightness < 0) brightness = 0;
+
+  Serial.println("LED Status: " + String(lampON));
+
+  FastLED.setBrightness(brightness);
+  FastLED.show();
+  FastLED.delay(fps);
+                       
+  EthernetClient client = server.available(); //Creamos un cliente Web
+  //Cuando detecte un cliente a través de una petición HTTP
   if (client) {
     Serial.println("new client");
-    // an http request ends with a blank line
-    boolean currentLineIsBlank = true;
+    boolean currentLineIsBlank = true; //Una petición HTTP acaba con una línea en blanco
+    String cadena=""; //Creamos una cadena de caracteres vacía
     while (client.connected()) {
       if (client.available()) {
-        char c = client.read();
-        Serial.write(c);
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        if (c == '\n' && currentLineIsBlank) {
-          // send a standard http response header
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close");  // the connection will be closed after completion of the response
-          client.println("Refresh: 5");  // refresh the page automatically every 5 sec
-          client.println();
-//          client.println("<!DOCTYPE html>");
-//          client.println("<html>");
-//          client.println("<body>");
-//          client.println("<div>Hello World Kike</div>");
-//          client.println("</body>");
-//          
-//          client.println("</html> ");
-
-          if (myFile) {
-            while(myFile.available()) {
-              client.write(myFile.read()); // send web page to client
-            }
-            myFile.seek(0);
+        char c = client.read();//Leemos la petición HTTP carácter por carácter
+        Serial.write(c);//Visualizamos la petición HTTP por el Monitor Serial
+        cadena.concat(c);//Unimos el String 'cadena' con la petición HTTP (c). De esta manera convertimos la petición HTTP a un String
+ 
+         //Ya que hemos convertido la petición HTTP a una cadena de caracteres, ahora podremos buscar partes del texto.
+         int posicion=cadena.indexOf("LED="); //Guardamos la posición de la instancia "LED=" a la variable 'posicion'
+ 
+          if(cadena.substring(posicion)=="LED=ON")//Si a la posición 'posicion' hay "LED=ON"
+          {
+            lampON=true;
+            Serial.println("Encendemos");            
           }
-          // Move a single white led 
-          for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
-             // Turn our current led on to white, then show the leds
-             leds[whiteLed].setRGB(255, 100, 40);
-        
-           }
-        
-           FastLED.show();
-           delay(100);
-   
+          if(cadena.substring(posicion)=="LED=OFF")//Si a la posición 'posicion' hay "LED=OFF"
+          {
+            lampON=false;
+            Serial.println("Apagamos");
+          
+          }
+         
+         // KIKE: Aquí faltaría convertir el texto en color y aplicarlo.
+          
+        //Cuando reciba una línea en blanco, quiere decir que la petición HTTP ha acabado y el servidor Web está listo para enviar una respuesta
+        if (c == '\n' && currentLineIsBlank) {
+ 
+            // Enviamos al cliente una respuesta HTTP
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/html");
+            client.println();
+
+            // Enviamos la pagina html
+            if (myFile) {
+              while(myFile.available()) {
+                client.write(myFile.read()); // send web page to client
+              }
+              myFile.seek(0);
+            }     
           break;
+          
         }
         if (c == '\n') {
-          // you're starting a new line
           currentLineIsBlank = true;
-        } else if (c != '\r') {
-          // you've gotten a character on the current line
+        }
+        else if (c != '\r') {
           currentLineIsBlank = false;
         }
       }
+
     }
-    // give the web browser time to receive the data
+    //Dar tiempo al navegador para recibir los datos
     delay(1);
-
-    // close the connection:
-    client.stop();
-    Serial.println("client disonnected");
-
-    myFile.close();
-
-    
+    client.stop();// Cierra la conexión
   }
 }
-//
-//void printDirectory(File dir, int numTabs) {
-//  while (true) {
-//
-//    File entry =  dir.openNextFile();
-//    if (! entry) {
-//      // no more files
-//      break;
-//    }
-//    for (uint8_t i = 0; i < numTabs; i++) {
-//      Serial.print('\t');
-//    }
-//    Serial.print(entry.name());
-//    if (entry.isDirectory()) {
-//      Serial.println("/");
-//      printDirectory(entry, numTabs + 1);
-//    } else {
-//      // files have sizes, directories do not
-//      Serial.print("\t\t");
-//      Serial.println(entry.size(), DEC);
-//    }
-//    entry.close();
-//  }
-//}
+
+void initSequence() {
+
+  int tDelay = 20;
+  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(255, 0, 0);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);              
+  }
+
+    for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(0, 255, 0);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);              
+  }
+
+  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(0, 0, 255);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);              
+  }
+
+}
+
 
