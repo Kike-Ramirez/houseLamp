@@ -211,12 +211,18 @@ void loop() {
 void testSequence() {
 
   int tDelay = 20;
+  int tDecay = 255;
+  
   for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
     // Turn our current led on to white, then show the leds
     leds[whiteLed].setRGB(255, 0, 0);
     FastLED.show();
     delay(tDelay);
-    leds[whiteLed].setRGB(0, 0, 0);              
+    leds[whiteLed].setRGB(0, 0, 0);
+//    for(int j = 0; j < NUM_LEDS; j = j + 1) {
+//      leds[j].r = leds[j].r - tDecay;
+//      if (leds[j].r < 0) leds[j].r = 0;
+//    }
   }
 
     for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
@@ -224,7 +230,8 @@ void testSequence() {
     leds[whiteLed].setRGB(0, 255, 0);
     FastLED.show();
     delay(tDelay);
-    leds[whiteLed].setRGB(0, 0, 0);              
+    leds[whiteLed].setRGB(0, 0, 0);
+
   }
 
   for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
@@ -232,7 +239,8 @@ void testSequence() {
     leds[whiteLed].setRGB(0, 0, 255);
     FastLED.show();
     delay(tDelay);
-    leds[whiteLed].setRGB(0, 0, 0);              
+    leds[whiteLed].setRGB(0, 0, 0);
+
   }
 
 }
