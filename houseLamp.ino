@@ -49,7 +49,7 @@ EthernetServer server(80);
 // Lamp parameters
 bool lampON = true;
 int brightness = 0;
-float fps = 1000.0 / 30;
+float fps = 1000.0 / 200.0;
 CRGB colorLED;
 
 // HTML File to be served
