@@ -21,16 +21,13 @@
 #include <SD.h>
 
 
-// How many leds are in the strip?
+// Number of LEDS in the strip
 #define NUM_LEDS 18
 
 // Data pin that led data will be written out over
 #define DATA_PIN 5
 
-// Clock pin only needed for SPI based chipsets when not using hardware SPI
-//#define CLOCK_PIN 8
-
-// This is an array of leds.  One item for each led in your strip.
+// Object representing the whole thing.
 CRGB leds[NUM_LEDS];
 
 // Network settings
@@ -40,6 +37,8 @@ CRGB leds[NUM_LEDS];
 byte mac[] = {
   0x90, 0xA2, 0xDA, 0x0F, 0x5A, 0x93
 };
+
+// Fixed IP Address
 IPAddress ip(192, 168, 0, 185);
 
 // Initialize the Ethernet server library
@@ -47,15 +46,18 @@ IPAddress ip(192, 168, 0, 185);
 // (port 80 is default for HTTP):
 EthernetServer server(80);
 
+// Lamp parameters
 bool lampON = true;
 int brightness = 0;
 float fps = 1000.0 / 30;
 CRGB colorLED;
 
-File myFile, root;
+// HTML File to be served
+File myFile;
 
 
 void setup() {
+  
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
@@ -64,26 +66,31 @@ void setup() {
 
   Serial.println("Serial port opened...");
 
-  // Inicializamos y apagamos los LEDS de inicio...
+  // Init LED Strip...
   FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
 
-  initSequence();
-  
+  // Launch test sequence at start
+  testSequence();
+
+  // Set default color
   for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
     // Turn our current led on to white, then show the leds
     leds[whiteLed].setRGB(255, 100, 40);          
   }
 
+  // Set initial brightness (OFF)
   FastLED.setBrightness(brightness);
-          
+
+  // Display the initial color (BLACK)
   FastLED.show();
              
-    // start the Ethernet connection and the server:
+  // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
   server.begin();
   Serial.print("server is at ");
   Serial.println(Ethernet.localIP());
 
+  // Initialize SD Card and get html file
   Serial.print("Initializing SD card...");
 
   if (!SD.begin(4)) {
@@ -110,60 +117,72 @@ void setup() {
 
 void loop() {
 
+  // Check changes in brightness
   if (lampON) brightness++;
   if (brightness > 255) brightness = 255;
 
   if (!lampON) brightness--;
   if (brightness < 0) brightness = 0;
 
-  Serial.println("LED Status: " + String(lampON));
-
+  // Apply changes and show lights
   FastLED.setBrightness(brightness);
   FastLED.show();
+
+  // Delay according to required frame per seconds
   FastLED.delay(fps);
-                       
-  EthernetClient client = server.available(); //Creamos un cliente Web
-  //Cuando detecte un cliente a través de una petición HTTP
+
+  // Create a web client if available
+  EthernetClient client = server.available(); 
+  // If a client is detected
   if (client) {
     Serial.println("new client");
-    boolean currentLineIsBlank = true; //Una petición HTTP acaba con una línea en blanco
-    String cadena=""; //Creamos una cadena de caracteres vacía
+    // A HTTP request ends in a blank line
+    boolean currentLineIsBlank = true;
+
+    // Create an empty string
+    String cadena=""; 
+    
     while (client.connected()) {
       if (client.available()) {
-        char c = client.read();//Leemos la petición HTTP carácter por carácter
-        Serial.write(c);//Visualizamos la petición HTTP por el Monitor Serial
-        cadena.concat(c);//Unimos el String 'cadena' con la petición HTTP (c). De esta manera convertimos la petición HTTP a un String
+        // Read the HTTP Request character by character
+        char c = client.read();
+        // Show request in serial
+        Serial.write(c);
+        // Join "cadena" with HTTP request to convert it to a string.
+        cadena.concat(c);
  
-         //Ya que hemos convertido la petición HTTP a una cadena de caracteres, ahora podremos buscar partes del texto.
-         int posicion=cadena.indexOf("LED="); //Guardamos la posición de la instancia "LED=" a la variable 'posicion'
- 
-          if(cadena.substring(posicion)=="LED=ON")//Si a la posición 'posicion' hay "LED=ON"
+         //Now we can search for patterns in the text.
+         int posicion=cadena.indexOf("LED="); 
+
+         // If "LED=ON" is found
+          if(cadena.substring(posicion)=="LED=ON")
           {
             lampON=true;
-            Serial.println("Encendemos");            
           }
+          // If "LED=OFF" is found
           if(cadena.substring(posicion)=="LED=OFF")//Si a la posición 'posicion' hay "LED=OFF"
           {
             lampON=false;
-            Serial.println("Apagamos");
           
           }
          
-         // KIKE: Aquí faltaría convertir el texto en color y aplicarlo.
+         // TBD: Receive a color string and apply it.
           
-        //Cuando reciba una línea en blanco, quiere decir que la petición HTTP ha acabado y el servidor Web está listo para enviar una respuesta
+        //If a blank line is received HTTP request has ended (send response now!)
         if (c == '\n' && currentLineIsBlank) {
  
-            // Enviamos al cliente una respuesta HTTP
+            // Send a HTTP Response
             client.println("HTTP/1.1 200 OK");
             client.println("Content-Type: text/html");
             client.println();
 
-            // Enviamos la pagina html
+            // Send a html file stored in SD Card
             if (myFile) {
               while(myFile.available()) {
-                client.write(myFile.read()); // send web page to client
+                // send web page to client
+                client.write(myFile.read()); 
               }
+              // "Rewind" the file
               myFile.seek(0);
             }     
           break;
@@ -178,13 +197,18 @@ void loop() {
       }
 
     }
-    //Dar tiempo al navegador para recibir los datos
+
+    // Give the browser some time to receive data
     delay(1);
-    client.stop();// Cierra la conexión
+    
+    // Close connection
+    client.stop();
   }
 }
 
-void initSequence() {
+
+// Initial Test Sequence (R - G - B)
+void testSequence() {
 
   int tDelay = 20;
   for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
