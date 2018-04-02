@@ -27,8 +27,10 @@
           <p class="text-secondary mb-5"> K.Ramírez - April, 2018 - MIT License</p>
           <a href="./LED=ON" class="col-12 btn btn-lg mx-1 btn-secondary">ON</a>
           <a href="./LED=OFF" class="col-12 btn btn-lg btn-primary mx-1">OFF</a>
-          <label for="led-color" class="text-secondary">Choose a color for LED :</label> 
-          <input id="led-color" type="color" class="col-12 form-control" style="min-height: 20%" value="#ffffff" />
+          <form action="" method="get" onsubmit="return updateSettings();">
+            <input id="led-color" type="color" class="col-12 form-control" style="min-height: 20%" value="#ffffff" />
+            <input id="led-brightness" type="range" class="col-12 form-control" style="min-height: 20%" value="#ffffff" min = "0" max = "255" defaultValue = "255" />
+          </form>
         </div>
       </div>
     </div>
@@ -36,6 +38,17 @@
   <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  <script>
+    function updateSettings()
+      {   
+          // var color = document.getElementById('led-color').nodeValue;
+          // var brightness = document.getElementById('led-brightness').nodeValue;
+
+          // var apicontent = "./BRIGHTNESS=" + brightness + "&COLOR=" + color;
+
+          // photoViewer.innerHTML = content; 
+      }
+  </script>
 </body>
 
 </html>
