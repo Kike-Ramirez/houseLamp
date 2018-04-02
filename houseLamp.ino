@@ -21,18 +21,37 @@
 #include <SD.h>
 
 
+// LAMP SETTINGS
+
+// Frames per seconds and step for lerp animations
+float fps = 1.0 / 100.0;
+float deltaAnim = 0.005;
+
+
+// Initial color set
+CRGB colorSet = CRGB(255, 100, 40);
+CRGB colorLED = CRGB(255, 100, 40);
+CRGB colorTarget = CRGB(255, 100, 40);
+float colorRatio = 1.0;
+
+// Initial brightness set
+int brightness = 0;
+int brightnessTarget = 255;
+int brightnessSet = 0;
+float brightnessRatio = 0.0;
+
 // Number of LEDS in the strip
 #define NUM_LEDS 18
 
-// Data pin that led data will be written out over
+// Arduino Data pin that led data will be written out over
 #define DATA_PIN 5
 
-// Object representing the whole thing.
+// Object representing the whole strip.
 CRGB leds[NUM_LEDS];
 
-// Network settings
+// NETWORK SETTINGS
 
-// Enter a MAC address and IP address for your controller below.
+// Enter a MAC address and IP address for your Ethernet Shield below.
 // The IP address will be dependent on your local network:
 byte mac[] = {
   0x90, 0xA2, 0xDA, 0x0F, 0x5A, 0x93
@@ -46,13 +65,7 @@ IPAddress ip(192, 168, 0, 185);
 // (port 80 is default for HTTP):
 EthernetServer server(80);
 
-// Lamp parameters
-bool lampON = true;
-int brightness = 0;
-float fps = 1000.0 / 200.0;
-CRGB colorLED;
-
-// HTML File to be served
+// HTML File (stored in SD card) to be served
 File myFile;
 
 
@@ -73,10 +86,7 @@ void setup() {
   testSequence();
 
   // Set default color
-  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
-    // Turn our current led on to white, then show the leds
-    leds[whiteLed].setRGB(255, 100, 40);          
-  }
+  fill_solid( leds, NUM_LEDS, colorLED);
 
   // Set initial brightness (OFF)
   FastLED.setBrightness(brightness);
@@ -118,13 +128,33 @@ void setup() {
 void loop() {
 
   // Check changes in brightness
-  if (lampON) brightness++;
-  if (brightness > 255) brightness = 255;
+  brightness = lerp(brightnessSet, brightnessTarget, brightnessRatio);
 
-  if (!lampON) brightness--;
-  if (brightness < 0) brightness = 0;
+  if (brightnessRatio > 1.0) {
+
+    brightnessSet = brightnessTarget;
+    brightnessRatio = 1.0;
+  }
+
+  else brightnessRatio += deltaAnim;
+  
+  // Check changes in color
+
+  colorLED.r = lerp(colorSet.r, colorTarget.r, colorRatio);
+  colorLED.g = lerp(colorSet.g, colorTarget.g, colorRatio);
+  colorLED.b = lerp(colorSet.b, colorTarget.b, colorRatio);
+  
+  if (colorRatio > 1.0) {
+
+    colorSet = colorTarget;
+    colorRatio = 1.0;
+  }
+
+  else colorRatio += deltaAnim;
+
 
   // Apply changes and show lights
+  fill_solid( leds, NUM_LEDS, colorLED);
   FastLED.setBrightness(brightness);
   FastLED.show();
 
@@ -151,22 +181,42 @@ void loop() {
         // Join "cadena" with HTTP request to convert it to a string.
         cadena.concat(c);
  
-         //Now we can search for patterns in the text.
+         // Search for "LED=" pattern in the text.
          int posicion=cadena.indexOf("LED="); 
 
          // If "LED=ON" is found
           if(cadena.substring(posicion)=="LED=ON")
           {
-            lampON=true;
+            brightnessTarget = 255;
+            brightnessRatio = 0.0;
           }
+          
           // If "LED=OFF" is found
-          if(cadena.substring(posicion)=="LED=OFF")//Si a la posición 'posicion' hay "LED=OFF"
+          if(cadena.substring(posicion)=="LED=OFF")
           {
-            lampON=false;
+            brightnessTarget = 0;
+            brightnessRatio = 0.0;
           
           }
-         
-         // TBD: Receive a color string and apply it.
+
+         // Search for "COLOR=" pattern in the text.
+         int posicion2 = cadena.indexOf("COLOR="); 
+
+         // Extract color value from text
+          if(cadena.substring(posicion2).length() == 14 )
+          {
+            String colorHex = cadena.substring(posicion2 + 6);
+            long long number = strtol( &colorHex[0], NULL, 16);
+
+            // Split them up into r, g, b values
+            long long r = number >> 16;
+            long long g = number >> 8 & 0xFF;
+            long long b = number & 0xFF;
+            
+            colorTarget = CRGB(r, g, b);
+            colorRatio = 0.0;
+ 
+          }
           
         //If a blank line is received HTTP request has ended (send response now!)
         if (c == '\n' && currentLineIsBlank) {
@@ -245,4 +295,9 @@ void testSequence() {
 
 }
 
+
+float lerp( float start, float end, float step)
+{
+    return (end - start) * step + start;
+}
 
