@@ -1,10 +1,11 @@
-
 /*
   >> houseLamp v0.1 <<
 
   Description: Arduino sketch controlling a LED Strip in a domestic environment. It acts as a web server in a LAN offering
   the user to control the LED Lamp remotely.
 
+  Platform: NodeMCU
+  
   Author: Kike Ramírez
   Date: 1/4/2018
 
@@ -15,13 +16,6 @@
 
  */
 
-/*
- * WebSocketServer_LEDcontrol.ino
- *
- *  Created on: 26.11.2015
- *
- */
-
 #include <Arduino.h>
 
 #include <ESP8266WiFi.h>
@@ -30,18 +24,52 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <Hash.h>
+#include <SPI.h>
+#include <FastLED.h>
 
-#define LED_RED     15
-#define LED_GREEN   12
-#define LED_BLUE    13
+
+#define LED_RED     LED_BUILTIN
 
 #define USE_SERIAL Serial
 
+#define SSID_HOME "CarmenLauraKike"
+#define PWD_HOME "Carmen2016"
+
+// LAMP SETTINGS
+
+// Frames per seconds and step for lerp animations
+float fps = 1.0 / 100.0;
+float deltaAnim = 0.005;
+
+
+// Initial color set
+CRGB colorSet = CRGB(255, 100, 40);
+CRGB colorLED = CRGB(255, 100, 40);
+CRGB colorTarget = CRGB(255, 100, 40);
+float colorRatio = 1.0;
+
+// Initial brightness set
+int brightness = 0;
+int brightnessTarget = 255;
+int brightnessSet = 0;
+float brightnessRatio = 0.0;
+
+// Number of LEDS in the strip
+#define NUM_LEDS 10
+
+// Arduino Data pin that led data will be written out over
+#define DATA_PIN 1
+
+// Object representing the whole strip.
+CRGB leds[NUM_LEDS];
+
+// NETWORK SETTINGS
 
 ESP8266WiFiMulti WiFiMulti;
 
 ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
+
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
 
@@ -67,8 +95,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                 uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
 
                 analogWrite(LED_RED,    ((rgb >> 16) & 0xFF));
-                analogWrite(LED_GREEN,  ((rgb >> 8) & 0xFF));
-                analogWrite(LED_BLUE,   ((rgb >> 0) & 0xFF));
+//                analogWrite(LED_GREEN,  ((rgb >> 8) & 0xFF));
+//                analogWrite(LED_BLUE,   ((rgb >> 0) & 0xFF));
             }
 
             break;
@@ -80,7 +108,7 @@ void setup() {
     //USE_SERIAL.begin(921600);
     USE_SERIAL.begin(115200);
 
-    //USE_SERIAL.setDebugOutput(true);
+    USE_SERIAL.setDebugOutput(true);
 
     USE_SERIAL.println();
     USE_SERIAL.println();
@@ -92,15 +120,22 @@ void setup() {
         delay(1000);
     }
 
-    pinMode(LED_RED, OUTPUT);
-    pinMode(LED_GREEN, OUTPUT);
-    pinMode(LED_BLUE, OUTPUT);
+    // Init LED Strip...
+    FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+  
+    // Launch test sequence at start
+    testSequence();
+  
+    // Set default color
+    fill_solid( leds, NUM_LEDS, colorLED);
+  
+    // Set initial brightness (OFF)
+    FastLED.setBrightness(brightness);
+  
+    // Display the initial color (BLACK)
+    FastLED.show();
 
-    digitalWrite(LED_RED, 1);
-    digitalWrite(LED_GREEN, 1);
-    digitalWrite(LED_BLUE, 1);
-
-    WiFiMulti.addAP("SSID", "passpasspass");
+    WiFiMulti.addAP(SSID_HOME, PWD_HOME);
 
     while(WiFiMulti.run() != WL_CONNECTED) {
         delay(100);
@@ -126,13 +161,89 @@ void setup() {
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 81);
 
-    digitalWrite(LED_RED, 0);
-    digitalWrite(LED_GREEN, 0);
-    digitalWrite(LED_BLUE, 0);
-
 }
 
 void loop() {
-    webSocket.loop();
-    server.handleClient();
+
+  // Check changes in brightness
+  brightness = lerp(brightnessSet, brightnessTarget, brightnessRatio);
+
+  if (brightnessRatio > 1.0) {
+
+    brightnessSet = brightnessTarget;
+    brightnessRatio = 1.0;
+  }
+
+  else brightnessRatio += deltaAnim;
+  
+  // Check changes in color
+
+  colorLED.r = lerp(colorSet.r, colorTarget.r, colorRatio);
+  colorLED.g = lerp(colorSet.g, colorTarget.g, colorRatio);
+  colorLED.b = lerp(colorSet.b, colorTarget.b, colorRatio);
+  
+  if (colorRatio > 1.0) {
+
+    colorSet = colorTarget;
+    colorRatio = 1.0;
+  }
+
+  else colorRatio += deltaAnim;
+
+
+  // Apply changes and show lights
+  fill_solid( leds, NUM_LEDS, colorLED);
+  FastLED.setBrightness(brightness);
+  FastLED.show();
+
+  // Delay according to required frame per seconds
+  FastLED.delay(fps);
+
+  // Handle network events
+  webSocket.loop();
+  server.handleClient();
+}
+
+// Initial Test Sequence (R - G - B)
+void testSequence() {
+
+  int tDelay = 20;
+  int tDecay = 255;
+  
+  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(255, 0, 0);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);
+//    for(int j = 0; j < NUM_LEDS; j = j + 1) {
+//      leds[j].r = leds[j].r - tDecay;
+//      if (leds[j].r < 0) leds[j].r = 0;
+//    }
+  }
+
+    for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(0, 255, 0);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);
+
+  }
+
+  for(int whiteLed = 0; whiteLed < NUM_LEDS; whiteLed = whiteLed + 1) {
+    // Turn our current led on to white, then show the leds
+    leds[whiteLed].setRGB(0, 0, 255);
+    FastLED.show();
+    delay(tDelay);
+    leds[whiteLed].setRGB(0, 0, 0);
+
+  }
+
+}
+
+
+float lerp( float start, float end, float step)
+{
+    return (end - start) * step + start;
 }
