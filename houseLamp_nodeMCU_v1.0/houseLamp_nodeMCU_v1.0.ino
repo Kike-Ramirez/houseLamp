@@ -38,15 +38,20 @@
 // LAMP SETTINGS
 
 // Frames per seconds and step for lerp animations
-float fps = 1.0 / 100.0;
-float deltaAnim = 0.005;
+float fps = 1000.0 / 50.0;
+float timeStamp = millis();
+
+float deltaAnim = 0.02;
 
 
 // Initial color set
-CRGB colorSet = CRGB(255, 100, 40);
-CRGB colorLED = CRGB(255, 100, 40);
-CRGB colorTarget = CRGB(255, 100, 40);
+CRGB colorSet = CRGB(255, 255, 255);
+CRGB colorLED = CRGB(255, 255, 255);
+CRGB colorTarget = CRGB(255, 255, 255);
 float colorRatio = 1.0;
+int hue = 0;
+int sat = 0;
+int val = 255;
 
 // Initial brightness set
 int brightness = 0;
@@ -70,6 +75,9 @@ ESP8266WiFiMulti WiFiMulti;
 ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
+// String containing html file
+String html ="<!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"> <link rel=\"apple-touch-icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_64.png\" /> <link rel=\"apple-touch-icon-precomposed\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_64.png\" /> <link rel=\"icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_64.png\"> <title>LED</title> <meta name=\"description\" content=\"LED Control Site.\"> <meta name=\"keywords\" content=\"creative coding, interaction, arduino, bootstrap, LED, javascript\"> <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\" type=\"text/css\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/styleguide.html\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/theme.css\"> </head> <body class=\"bg-primary\"> <div class=\"py-5 text-center\" style=\"background-size: cover; background-image: url(&quot;http://www.2sega.com/wp-content/uploads/2016/04/LED-lights.jpg&quot;);\"> <div class=\"container py-5\"> <div class=\"row\"> <div class=\"col-md-12\"> <h1 class=\"display-3 mb-4 text-primary\">LED</h1> <p class=\"lead mb-5\"> LED Strip controlled via LAN using a Arduino-based web server.</p> <p class=\"text-secondary mb-5\"> K.Ramírez - April, 2018 - MIT License</p> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendON();\">ON</button> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendOFF();\">OFF</button> <input id=\"h\" name=\"Hue\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendHue();\" class=\"col-12 btn btn-lg mx-1 btn-secondary\" /> <input id=\"s\" name=\"Saturation\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendSaturation();\" class=\"col-12 btn btn-lg mx-1 btn-secondary\" /> <input id=\"v\" name=\"Brightness\" type=\"range\" min=\"5\" max=\"255\" step=\"1\" oninput=\"sendBrightness();\" class=\"col-12 btn btn-lg mx-1 btn-secondary\" /> </div> </div> </div> </div> <script src=\"https://code.jquery.com/jquery-3.2.1.slim.min.js\" integrity=\"sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN\" crossorigin=\"anonymous\"></script> <script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" integrity=\"sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q\" crossorigin=\"anonymous\"></script> <script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\" integrity=\"sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl\" crossorigin=\"anonymous\"></script> <script> var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']); connection.onopen = function () { connection.send('Connect ' + new Date()); }; connection.onerror = function (error) { console.log('WebSocket Error ', error); }; connection.onmessage = function (e) { console.log('Server: ', e.data); }; function sendHue() { var hue = 'h' + parseInt(document.getElementById('h').value).toString(16); console.log('Hue: ' + hue); connection.send(hue); }; function sendSaturation() { var sat = 's' + parseInt(document.getElementById('s').value).toString(16); console.log('Saturation: ' + sat); connection.send(sat); } function sendBrightness() { var bright = \"b\" + parseInt(document.getElementById('v').value).toString(16); console.log('Brightness: ' + bright); connection.send(bright); } function sendON() { var bright = \"bff\"; console.log('ON'); connection.send(bright); } function sendOFF() { var bright = \"b0\"; console.log('OFF'); connection.send(bright); } </script> </body> </html>";
+
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
 
@@ -88,15 +96,46 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         case WStype_TEXT:
             USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
 
-            if(payload[0] == '#') {
-                // we get RGB data
+            if(payload[0] == 'h') {
 
                 // decode rgb data
-                uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
+                hue = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
 
-                analogWrite(LED_RED,    ((rgb >> 16) & 0xFF));
-//                analogWrite(LED_GREEN,  ((rgb >> 8) & 0xFF));
-//                analogWrite(LED_BLUE,   ((rgb >> 0) & 0xFF));
+                colorTarget.setHue(hue);
+                colorSet = colorLED;
+                colorRatio = 0.0;
+                
+                USE_SERIAL.printf("Hue: %d\n", hue);
+
+
+            }
+
+            else if(payload[0] == 's') {
+
+                // decode rgb data
+                sat = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
+
+                colorTarget = CHSV( hue, sat, val);
+                colorSet = colorLED;
+                colorRatio = 0.0;
+                
+                USE_SERIAL.printf("Sat: %d\n", sat);
+
+
+            }
+            
+            else if(payload[0] == 'b') {
+
+                // decode rgb data
+                val = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
+
+                brightnessTarget = val;
+                brightnessSet = brightness;
+                brightnessRatio = 0.0;
+                
+                USE_SERIAL.printf("Val: %d\n", val);
+
+
             }
 
             break;
@@ -152,7 +191,8 @@ void setup() {
     // handle index
     server.on("/", []() {
         // send index.html
-        server.send(200, "text/html", "<html><head><script>var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);connection.onopen = function () {  connection.send('Connect ' + new Date()); }; connection.onerror = function (error) {    console.log('WebSocket Error ', error);};connection.onmessage = function (e) {  console.log('Server: ', e.data);};function sendRGB() {  var r = parseInt(document.getElementById('r').value).toString(16);  var g = parseInt(document.getElementById('g').value).toString(16);  var b = parseInt(document.getElementById('b').value).toString(16);  if(r.length < 2) { r = '0' + r; }   if(g.length < 2) { g = '0' + g; }   if(b.length < 2) { b = '0' + b; }   var rgb = '#'+r+g+b;    console.log('RGB: ' + rgb); connection.send(rgb); }</script></head><body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
+//        server.send(200, "text/html", "<html><head><script>var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);connection.onopen = function () {  connection.send('Connect ' + new Date()); }; connection.onerror = function (error) {    console.log('WebSocket Error ', error);};connection.onmessage = function (e) {  console.log('Server: ', e.data);};function sendRGB() {  var r = parseInt(document.getElementById('r').value).toString(16);  var g = parseInt(document.getElementById('g').value).toString(16);  var b = parseInt(document.getElementById('b').value).toString(16);  if(r.length < 2) { r = '0' + r; }   if(g.length < 2) { g = '0' + g; }   if(b.length < 2) { b = '0' + b; }   var rgb = '#'+r+g+b;    console.log('RGB: ' + rgb); connection.send(rgb); }</script></head><body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
+        server.send(200, "text/html", html);
     });
 
     server.begin();
@@ -165,39 +205,44 @@ void setup() {
 
 void loop() {
 
-  // Check changes in brightness
-  brightness = lerp(brightnessSet, brightnessTarget, brightnessRatio);
+  if (millis() - timeStamp > fps) {
 
-  if (brightnessRatio > 1.0) {
+    timeStamp = millis();
 
-    brightnessSet = brightnessTarget;
-    brightnessRatio = 1.0;
-  }
-
-  else brightnessRatio += deltaAnim;
+    // Check changes in brightness
+    brightness = lerp(brightnessSet, brightnessTarget, brightnessRatio);
   
-  // Check changes in color
-
-  colorLED.r = lerp(colorSet.r, colorTarget.r, colorRatio);
-  colorLED.g = lerp(colorSet.g, colorTarget.g, colorRatio);
-  colorLED.b = lerp(colorSet.b, colorTarget.b, colorRatio);
+    if (brightnessRatio >= 1.0) {
   
-  if (colorRatio > 1.0) {
-
-    colorSet = colorTarget;
-    colorRatio = 1.0;
+      brightnessSet = brightnessTarget;
+      brightness = brightnessTarget;
+      brightnessRatio = 1.0;
+    }
+  
+    else brightnessRatio += deltaAnim;
+    
+    // Check changes in color
+  
+    colorLED.r = lerp(colorSet.r, colorTarget.r, colorRatio);
+    colorLED.g = lerp(colorSet.g, colorTarget.g, colorRatio);
+    colorLED.b = lerp(colorSet.b, colorTarget.b, colorRatio);
+    
+    if (colorRatio >= 1.0) {
+  
+      colorSet = colorTarget;
+      colorLED = colorTarget;
+      colorRatio = 1.0;
+    }
+  
+    else colorRatio += deltaAnim;
+  
+  
+    // Apply changes and show lights
+    fill_solid( leds, NUM_LEDS, colorLED);
+    FastLED.setBrightness(brightness);
+    FastLED.show();
+  
   }
-
-  else colorRatio += deltaAnim;
-
-
-  // Apply changes and show lights
-  fill_solid( leds, NUM_LEDS, colorLED);
-  FastLED.setBrightness(brightness);
-  FastLED.show();
-
-  // Delay according to required frame per seconds
-  FastLED.delay(fps);
 
   // Handle network events
   webSocket.loop();
