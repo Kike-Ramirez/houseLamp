@@ -1,6 +1,6 @@
 # >> led v0.1 <<
 
-![led_v01_webApp](/houseLamp_arduino_ethernet_shield/images/led_webApp.png)
+![led_v01_webApp](/images/led_webApp.png)
 
 ## Description
 Arduino sketch controlling a LED Strip in a domestic environment. It acts as a web server in a LAN offering the user to control the LED Lamp remotely.
