@@ -27,9 +27,9 @@
           <p class="text-secondary mb-5"> K.Ramírez - April, 2018 - MIT License</p>
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendON();">ON</button>
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendOFF();">OFF</button>     
-          <input id="h" name="Hue" type="range" min="0" max="255" step="1" oninput="sendHue();" class="col-12 btn btn-lg mx-1 btn-secondary" />
-          <input id="s" name="Saturation" type="range" min="0" max="255" step="1" oninput="sendSaturation();" class="col-12 btn btn-lg mx-1 btn-secondary" />
-          <input id="v" name="Brightness" type="range" min="5" max="255" step="1" oninput="sendBrightness();" class="col-12 btn btn-lg mx-1 btn-secondary" />
+          <input id="h" name="Hue" type="range" min="0" max="255" step="1" value="0" oninput="sendHue();" class="col-12 btn btn-lg mx-1 btn-secondary" />
+          <input id="s" name="Saturation" type="range" min="0" max="255" step="1" value="0" oninput="sendSaturation();" class="col-12 btn btn-lg mx-1 btn-secondary" />
+          <input id="v" name="Brightness" type="range" min="5" max="255" step="1" value="255" oninput="sendBrightness();" class="col-12 btn btn-lg mx-1 btn-secondary" />
         </div>
       </div>
     </div>
@@ -39,7 +39,8 @@
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
   <script>
     var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
-    
+    var brightnessRange = document.getElementById("v");
+
     connection.onopen = function () {
           connection.send('Connect ' + new Date()); 
           }; 
@@ -78,6 +79,7 @@
             
             console.log('ON');
             connection.send(bright);
+            brightnessRange.value = 255;
 
         }
 
@@ -86,6 +88,7 @@
             
             console.log('OFF');
             connection.send(bright);
+            brightnessRange.value = 0;
 
         }
     </script>
