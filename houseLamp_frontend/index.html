@@ -29,6 +29,8 @@
           <canvas id="ledColor" class="col-12" height="5%"></canvas>
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendON();">ON</button>
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendOFF();">OFF</button>     
+          <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="effectON();">EFFECT ON</button>     
+          <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="effectOFF();">EFFECT OFF</button>     
           <input id="h" name="Hue" type="range" min="0" max="255" step="1" value="0" oninput="sendHue();" class="col-9 btn btn-lg mx-1 btn-secondary" />
           <input id="s" name="Saturation" type="range" min="0" max="255" step="1" value="0" oninput="sendSaturation();" class="col-9 btn btn-lg mx-1 btn-secondary" />
           <input id="v" name="Brightness" type="range" min="5" max="255" step="1" value="255" oninput="sendBrightness();" class="col-9 btn btn-lg mx-1 btn-secondary" />
@@ -105,6 +107,22 @@
         console.log('OFF');
         connection.send(bright);
         brightnessRange.value = 0;
+
+    };
+
+    function effectON() {
+        var effectString = "w1";  
+            
+        console.log('EFFECT ON');
+        connection.send(effectString);
+
+    };
+
+    function effectOFF() {
+        var effectString = "w0";  
+            
+        console.log('EFFECT OFF');
+        connection.send(effectString);
 
     };
 
