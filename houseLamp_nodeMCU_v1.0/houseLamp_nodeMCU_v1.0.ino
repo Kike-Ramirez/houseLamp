@@ -1,3 +1,4 @@
+
 /*
   >> houseLamp v0.1 <<
 
@@ -27,6 +28,8 @@
 #include <SPI.h>
 #include <FastLED.h>
 #include <EEPROM.h>
+#include <SimplexNoise.h>
+
 
 #define LED_RED     LED_BUILTIN
 
@@ -52,6 +55,7 @@ CHSV colorSet = CHSV(0, 0, 0);
 CHSV colorLED = CHSV(0, 0, 0);
 CHSV colorTarget = CHSV(0, 0, 255);
 float colorRatio = 0.0;
+bool waveEffect = false;
 
 
 // Number of LEDS in the strip
@@ -71,7 +75,9 @@ ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 // String containing html file
-String html ="<!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"> <link rel=\"apple-touch-icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"apple-touch-icon-precomposed\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"shortcut icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\"> <title>LED</title> <meta name=\"description\" content=\"LED Control Site.\"> <meta name=\"keywords\" content=\"creative coding, interaction, arduino, bootstrap, LED, javascript\"> <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\" type=\"text/css\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/styleguide.html\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/theme.css\"> </head> <body class=\"bg-primary\"> <div class=\"py-5 text-center\" style=\"background-size: cover; background-image: url(&quot;http://www.2sega.com/wp-content/uploads/2016/04/LED-lights.jpg&quot;);\"> <div class=\"container py-5\"> <div class=\"row\"> <div class=\"col-md-12\"> <h1 class=\"display-3 mb-4 text-primary\">LED</h1> <p class=\"lead mb-5\"> LED Strip controlled via LAN using a Arduino-based web server.</p> <p class=\"text-secondary mb-5\"> K.Ramírez - April, 2018 - MIT License</p> <canvas id=\"ledColor\" class=\"col-12\" height=\"5%\"></canvas> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendON();\">ON</button> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendOFF();\">OFF</button> <input id=\"h\" name=\"Hue\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" value=\"0\" oninput=\"sendHue();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> <input id=\"s\" name=\"Saturation\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" value=\"0\" oninput=\"sendSaturation();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> <input id=\"v\" name=\"Brightness\" type=\"range\" min=\"5\" max=\"255\" step=\"1\" value=\"255\" oninput=\"sendBrightness();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> </div> </div> </div> </div> <script src=\"https://code.jquery.com/jquery-3.2.1.slim.min.js\" integrity=\"sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN\" crossorigin=\"anonymous\"></script> <script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" integrity=\"sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q\" crossorigin=\"anonymous\"></script> <script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\" integrity=\"sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl\" crossorigin=\"anonymous\"></script> <script> var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']); var hueRange = document.getElementById(\"h\"); var saturationRange = document.getElementById(\"s\"); var brightnessRange = document.getElementById(\"v\"); var c=document.getElementById('ledColor'); var ctx=c.getContext('2d'); connection.onopen = function () { connection.send('Connect ' + new Date()); }; connection.onerror = function (error) { console.log('WebSocket Error ', error); }; connection.onmessage = function (e) { console.log('Server: ', e.data); if(e.data.charAt(0)=='h') hueRange.value = parseInt(e.data.substring(1), 16); if(e.data.charAt(0)=='s') saturationRange.value = parseInt(e.data.substring(1), 16); if(e.data.charAt(0)=='b') brightnessRange.value = parseInt(e.data.substring(1), 16); updateCanvas(); }; function sendHue() { var hue = 'h' + parseInt(document.getElementById('h').value).toString(16); console.log('Hue: ' + hue); connection.send(hue); updateCanvas(); }; function sendSaturation() { var sat = 's' + parseInt(document.getElementById('s').value).toString(16); console.log('Saturation: ' + sat); connection.send(sat); updateCanvas(); }; function sendBrightness() { var bright = \"b\" + parseInt(document.getElementById('v').value).toString(16); console.log('Brightness: ' + bright); connection.send(bright); updateCanvas(); }; function sendON() { var bright = \"bff\"; console.log('ON'); connection.send(bright); brightnessRange.value = 255; }; function sendOFF() { var bright = \"b0\"; console.log('OFF'); connection.send(bright); brightnessRange.value = 0; }; function hsv_to_hsl(h, s, v) { var l = (2 - s) * v / 2; if (l != 0) { if (l == 1) { s = 0; } else if (l < 0.5) { s = s * v / (l * 2); } else { s = s * v / (2 - l * 2); } } return [h, s, l]; }; function updateCanvas() { var hsl = hsv_to_hsl(hueRange.value / 255, saturationRange.value / 255.0, brightnessRange.value / 255.0); ctx.fillStyle='hsl(' + String(hsl[0] * 360.0) + ', ' + String(hsl[1] * 100.0) + '%, ' + String(hsl[2] * 100.0) + '%)'; ctx.fillRect(0,0,c.width,c.height); }; </script> </body> </html>";
+String html ="<!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"> <link rel=\"apple-touch-icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"apple-touch-icon-precomposed\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"shortcut icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\" /> <link rel=\"icon\" href=\"https://www.kikeramirez.org/images/logo_kikeramirez_16.png\"> <title>LED</title> <meta name=\"description\" content=\"LED Control Site.\"> <meta name=\"keywords\" content=\"creative coding, interaction, arduino, bootstrap, LED, javascript\"> <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css\" type=\"text/css\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/styleguide.html\"> <link rel=\"stylesheet\" href=\"https://www.kikeramirez.org/assets/houseLamp/theme.css\"> </head> <body class=\"bg-primary\"> <div class=\"py-5 text-center\" style=\"background-size: cover; background-image: url(&quot;http://www.2sega.com/wp-content/uploads/2016/04/LED-lights.jpg&quot;);\"> <div class=\"container py-5\"> <div class=\"row\"> <div class=\"col-md-12\"> <h1 class=\"display-3 mb-4 text-primary\">LED</h1> <p class=\"lead mb-5\"> LED Strip controlled via LAN using a Arduino-based web server.</p> <p class=\"text-secondary mb-5\"> K.Ramírez - April, 2018 - MIT License</p> <canvas id=\"ledColor\" class=\"col-12\" height=\"5%\"></canvas> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendON();\">ON</button> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"sendOFF();\">OFF</button> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"effectON();\">EFFECT ON</button> <button type=\"button\" class=\"col-12 btn btn-lg btn-primary mx-1\" onclick =\"effectOFF();\">EFFECT OFF</button> <input id=\"h\" name=\"Hue\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" value=\"0\" oninput=\"sendHue();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> <input id=\"s\" name=\"Saturation\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" value=\"0\" oninput=\"sendSaturation();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> <input id=\"v\" name=\"Brightness\" type=\"range\" min=\"5\" max=\"255\" step=\"1\" value=\"255\" oninput=\"sendBrightness();\" class=\"col-9 btn btn-lg mx-1 btn-secondary\" /> </div> </div> </div> </div> <script src=\"https://code.jquery.com/jquery-3.2.1.slim.min.js\" integrity=\"sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN\" crossorigin=\"anonymous\"></script> <script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js\" integrity=\"sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q\" crossorigin=\"anonymous\"></script> <script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js\" integrity=\"sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl\" crossorigin=\"anonymous\"></script> <script> var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']); var hueRange = document.getElementById(\"h\"); var saturationRange = document.getElementById(\"s\"); var brightnessRange = document.getElementById(\"v\"); var c=document.getElementById('ledColor'); var ctx=c.getContext('2d'); connection.onopen = function () { connection.send('Connect ' + new Date()); }; connection.onerror = function (error) { console.log('WebSocket Error ', error); }; connection.onmessage = function (e) { console.log('Server: ', e.data); if(e.data.charAt(0)=='h') hueRange.value = parseInt(e.data.substring(1), 16); if(e.data.charAt(0)=='s') saturationRange.value = parseInt(e.data.substring(1), 16); if(e.data.charAt(0)=='b') brightnessRange.value = parseInt(e.data.substring(1), 16); updateCanvas(); }; function sendHue() { var hue = 'h' + parseInt(document.getElementById('h').value).toString(16); console.log('Hue: ' + hue); connection.send(hue); updateCanvas(); }; function sendSaturation() { var sat = 's' + parseInt(document.getElementById('s').value).toString(16); console.log('Saturation: ' + sat); connection.send(sat); updateCanvas(); }; function sendBrightness() { var bright = \"b\" + parseInt(document.getElementById('v').value).toString(16); console.log('Brightness: ' + bright); connection.send(bright); updateCanvas(); }; function sendON() { var bright = \"bff\"; console.log('ON'); connection.send(bright); brightnessRange.value = 255; }; function sendOFF() { var bright = \"b0\"; console.log('OFF'); connection.send(bright); brightnessRange.value = 0; }; function effectON() { var effectString = \"w1\"; console.log('EFFECT ON'); connection.send(effectString); }; function effectOFF() { var effectString = \"w0\"; console.log('EFFECT OFF'); connection.send(effectString); }; function hsv_to_hsl(h, s, v) { var l = (2 - s) * v / 2; if (l != 0) { if (l == 1) { s = 0; } else if (l < 0.5) { s = s * v / (l * 2); } else { s = s * v / (2 - l * 2); } } return [h, s, l]; }; function updateCanvas() { var hsl = hsv_to_hsl(hueRange.value / 255, saturationRange.value / 255.0, brightnessRange.value / 255.0); ctx.fillStyle='hsl(' + String(hsl[0] * 360.0) + ', ' + String(hsl[1] * 100.0) + '%, ' + String(hsl[2] * 100.0) + '%)'; ctx.fillRect(0,0,c.width,c.height); }; </script> </body> </html>";
+
+SimplexNoise sn;
 
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
@@ -90,6 +96,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             webSocket.sendTXT(num, "h" + String(colorTarget.h, HEX));
             webSocket.sendTXT(num, "s" + String(colorTarget.s, HEX));
             webSocket.sendTXT(num, "b" + String(colorTarget.v, HEX));
+
+            String dataSent;
+            
+            if (waveEffect) dataSent = "w1";
+            else dataSent = "w0";
+            webSocket.sendTXT(num, dataSent);
             
         }
             break;
@@ -131,6 +143,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 
             }
+            else if(payload[0] == 'w') {
+
+                // Set effect mode 
+                if (payload[1] == '1') waveEffect = true;
+                else if (payload[1] == '0') waveEffect = false;
+                
+                USE_SERIAL.printf("Wave effect: %b\n", waveEffect);
+
+
+            }
             webSocket.broadcastTXT(payload, length);
 
             break;
@@ -145,6 +167,8 @@ void setup() {
     USE_SERIAL.setDebugOutput(false);
 
     colorTarget = CHSV(EEPROM_ESP8266_LEER(0, 32).toInt(), EEPROM_ESP8266_LEER(32, 64).toInt(), EEPROM_ESP8266_LEER(64, 96).toInt());
+    if (EEPROM_ESP8266_LEER(96, 128) == "1") waveEffect = true;
+    else waveEffect = false;
     
     USE_SERIAL.println();
     USE_SERIAL.println();
@@ -198,9 +222,7 @@ void setup() {
 
     // handle index
     server.on("/", []() {
-        // send index.html
-//        server.send(200, "text/html", "<html><head><script>var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);connection.onopen = function () {  connection.send('Connect ' + new Date()); }; connection.onerror = function (error) {    console.log('WebSocket Error ', error);};connection.onmessage = function (e) {  console.log('Server: ', e.data);};function sendRGB() {  var r = parseInt(document.getElementById('r').value).toString(16);  var g = parseInt(document.getElementById('g').value).toString(16);  var b = parseInt(document.getElementById('b').value).toString(16);  if(r.length < 2) { r = '0' + r; }   if(g.length < 2) { g = '0' + g; }   if(b.length < 2) { b = '0' + b; }   var rgb = '#'+r+g+b;    console.log('RGB: ' + rgb); connection.send(rgb); }</script></head><body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
-        server.send(200, "text/html", html);
+      server.send(200, "text/html", html);
     });
 
     server.begin();
@@ -233,7 +255,14 @@ void loop() {
     vStr.toCharArray(vTarget, 32);
     EEPROM_ESP8266_GRABAR(vTarget, 64); //SAVE
 
+    char wTarget [32];
+    String wStr = String(waveEffect);
+    wStr.toCharArray(wTarget, 32);
+    EEPROM_ESP8266_GRABAR(wTarget, 96); //SAVE
+
     USE_SERIAL.println("Data saved into EEPROM");
+    USE_SERIAL.println(wTarget);
+    
             
   }
 
@@ -244,7 +273,6 @@ void loop() {
 
     
     // Check changes in color
-  
     colorLED.h = lerp(colorSet.h, colorTarget.h, colorRatio);
     colorLED.s = lerp(colorSet.s, colorTarget.s, colorRatio);
     colorLED.v = lerp(colorSet.v, colorTarget.v, colorRatio);
@@ -259,10 +287,37 @@ void loop() {
     else {
       colorRatio += deltaAnim;
     }
-  
+
+    // Apply effect if needed
+    CHSV colorEffect = colorLED;
+
+    if (waveEffect) {
+
+      float ampH = 5.0;
+      float ampV = 10.0;
+      float seed = 1000.0;
+
+      float stepH = millis() * 0.00008;
+      float stepV = millis() * 0.00004;
+      float newH = colorEffect.h + ampH * float(sn.noise(stepH, seed));
+      if (newH > 255) newH = 255;
+      if (newH < 0) newH = 0;
+      
+      float newV = colorEffect.v + ampV * float(sn.noise(stepV, 2 * seed));
+      if (newV > 255) newV = 255;
+      if (newV < 0) newV = 0;
+
+      colorEffect.h = newH;
+      colorEffect.v = newV;
+      
+      USE_SERIAL.print(colorEffect.h);
+      USE_SERIAL.print(" ");
+      USE_SERIAL.println(colorEffect.v);
+      
+    }
   
     // Apply changes and show lights
-    fill_solid( leds, NUM_LEDS, colorLED);
+    fill_solid( leds, NUM_LEDS, colorEffect );
     FastLED.show();
   
   }

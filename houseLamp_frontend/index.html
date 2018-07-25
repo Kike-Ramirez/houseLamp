@@ -20,13 +20,36 @@
 
 <body class="bg-primary">
   <div class="py-5 text-center" style="background-size: cover; background-image: url(&quot;http://www.2sega.com/wp-content/uploads/2016/04/LED-lights.jpg&quot;);">
-    <div class="container py-5">
+    <div class="container example">
       <div class="row">
         <div class="col-md-12">
           <h1 class="display-3 mb-4 text-primary">LED</h1>
           <p class="lead mb-5"> LED Strip controlled via LAN using a Arduino-based web server.</p>
           <p class="text-secondary mb-5"> K.Ramírez - April, 2018 - MIT License</p>
-          <canvas id="ledColor" class="col-12" height="5%"></canvas>
+          <canvas id="ledColor" class="col-12" height="10%"></canvas>
+
+          <div class="row">
+
+            <div class="col-sm-2">
+              <h6>POWER</h6>
+            </div>
+        
+            <input type="checkbox" id="powerswitch" name="power" class="switch-input col-sm-10">
+	        <label for="powerswitch" class="switch-label"><span class="toggle--on"> ON </span><span class="toggle--off">OFF</span></label>
+        
+          </div>
+
+          <div class="row">
+
+            <div class="col-sm-2">
+              <h6>EFFECTS</h6>
+            </div>
+        
+            <input type="checkbox" id="effectswitch" name="effect" class="switch-input col-sm-10">
+	        <label for="effectswitch" class="switch-label"><span class="toggle--on"> ON </span><span class="toggle--off">OFF</span></label>
+        
+          </div>
+
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendON();">ON</button>
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="sendOFF();">OFF</button>     
           <button type="button" class="col-12 btn btn-lg btn-primary mx-1" onclick ="effectON();">EFFECT ON</button>     
@@ -41,6 +64,8 @@
   <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+  <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
   <script>
     var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
     var hueRange = document.getElementById("h");
