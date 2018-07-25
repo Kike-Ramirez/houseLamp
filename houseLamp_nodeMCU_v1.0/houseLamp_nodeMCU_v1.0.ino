@@ -40,6 +40,7 @@ int PIN_DATA = 20;
 
 float hue = 0.4;
 boolean up = true;
+double alpha = 1.0;
 
 ChainableLED indicator(D2, D1, NUM_LEDS); //defines the pin used on arduino.
 
@@ -99,11 +100,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
     switch(type) {
         case WStype_DISCONNECTED:
-            USE_SERIAL.printf("[%u] Disconnected!\n", num);
+            // USE_SERIAL.printf("[%u] Disconnected!\n", num);
             break;
         case WStype_CONNECTED: {
             IPAddress ip = webSocket.remoteIP(num);
-            USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+            // USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
             // send message to client
             webSocket.sendTXT(num, "Connected");
@@ -121,7 +122,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         }
             break;
         case WStype_TEXT:
-            USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
+            // USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
             
             activity.attach(0.04, activityIndicator);
             
@@ -132,7 +133,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                 colorSet = colorLED;
                 colorRatio = 0.0;
                 
-                USE_SERIAL.printf("Hue: %d\n", colorTarget.h);
+                // USE_SERIAL.printf("Hue: %d\n", colorTarget.h);
 
 
             }
@@ -144,7 +145,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                 colorSet = colorLED;
                 colorRatio = 0.0;
                 
-                USE_SERIAL.printf("Sat: %d\n", colorTarget.s);
+                // USE_SERIAL.printf("Sat: %d\n", colorTarget.s);
 
 
             }
@@ -156,7 +157,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                 colorSet = colorLED;
                 colorRatio = 0.0;
                 
-                USE_SERIAL.printf("Val: %d\n", colorTarget.v);
+                // USE_SERIAL.printf("Val: %d\n", colorTarget.v);
 
 
             }
@@ -166,7 +167,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                 if (payload[1] == '1') waveEffect = true;
                 else if (payload[1] == '0') waveEffect = false;
                 
-                USE_SERIAL.printf("Wave effect: %b\n", waveEffect);
+                // USE_SERIAL.printf("Wave effect: %b\n", waveEffect);
 
 
             }
@@ -179,19 +180,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 void sinusRed() {
 
-  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
+  double brightness = alpha * 0.2 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
   indicator.setColorHSB(0, 0.0,1.0, brightness);
 }
 
 void sinusGreen() {
 
-  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
+  double brightness = alpha * 0.2 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
   indicator.setColorHSB(0, 0.3333,1.0, brightness);
 }
 
 void sinusBlue() {
 
-  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 500.0 ));
+  double brightness = alpha * 0.2 * ( 0.5 + 0.5 * sin( millis() / 500.0 ));
   indicator.setColorHSB(0, 0.6666,1.0, brightness);
 }
 
@@ -216,36 +217,37 @@ void activityIndicator() {
     activity.detach();
     activityBlinks = 6.0;
     looper.detach();
-    looper.attach(0.1, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
-    sleep.once(30.0, goToSleepIndicator);
+    looper.attach(0.02, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
+    alpha = 1.0;
+    sleep.once(60.0, goToSleepIndicator);
   }
 }
 
 void setup() {
-    //USE_SERIAL.begin(921600);
-    looper.attach(0.1, sinusRed); //Use <strong>attach_ms</strong> if you need time in ms    
+    //// USE_SERIAL.begin(921600);
+    looper.attach(0.02, sinusRed); //Use <strong>attach_ms</strong> if you need time in ms    
     // indicator.setColorHSB(0, 0.0, 1.0, 0.1);
     
-    USE_SERIAL.begin(115200);
+    // USE_SERIAL.begin(115200);
 
-    USE_SERIAL.setDebugOutput(false);
+    // USE_SERIAL.setDebugOutput(false);
 
     colorTarget = CHSV(EEPROM_ESP8266_LEER(0, 32).toInt(), EEPROM_ESP8266_LEER(32, 64).toInt(), EEPROM_ESP8266_LEER(64, 96).toInt());
     if (EEPROM_ESP8266_LEER(96, 128) == "1") waveEffect = true;
     else waveEffect = false;
     
-    USE_SERIAL.println();
-    USE_SERIAL.println();
-    USE_SERIAL.println();
+    // USE_SERIAL.println();
+    // USE_SERIAL.println();
+    // USE_SERIAL.println();
 
     for(uint8_t t = 4; t > 0; t--) {
-        USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
-        USE_SERIAL.flush();
+        // USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
+        // USE_SERIAL.flush();
         delay(1000);
     }
 
     looper.detach();
-    looper.attach(0.1, sinusGreen); //Use <strong>attach_ms</strong> if you need time in ms    
+    looper.attach(0.02, sinusGreen); //Use <strong>attach_ms</strong> if you need time in ms    
 
 
     // Init LED Strip...
@@ -276,22 +278,23 @@ void setup() {
     IPAddress subnet(255,255,255,0);   
     WiFi.config(ip, gateway, subnet);
 
-   Serial.println();
-   Serial.print("MAC: ");
-   Serial.println(WiFi.macAddress());
+   // Serial.println();
+   // Serial.print("MAC: ");
+   // Serial.println(WiFi.macAddress());
 
     // start webSocket server
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
 
     if(MDNS.begin("esp8266")) {
-        USE_SERIAL.println("MDNS responder started");
+        // USE_SERIAL.println("MDNS responder started");
     }
 
     // handle index
     server.on("/", []() {
       server.send(200, "text/html", html);
       activity.attach(0.04, activityIndicator);
+      alpha = 1.0;
 
     });
 
@@ -302,13 +305,14 @@ void setup() {
     MDNS.addService("ws", "tcp", 81);
 
     looper.detach();
-    looper.attach(0.1, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
-    sleep.once(30.0, goToSleepIndicator);
+    looper.attach(0.02, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
+    sleep.once(60.0, goToSleepIndicator);
 
 
 }
 
 void loop() {
+
 
   // Save persistent data
   if (millis() - saveStamp > saveTimer) {
@@ -335,13 +339,16 @@ void loop() {
     wStr.toCharArray(wTarget, 32);
     EEPROM_ESP8266_GRABAR(wTarget, 96); //SAVE
 
-    USE_SERIAL.println("Data saved into EEPROM");
-    USE_SERIAL.println(wTarget);
+    // USE_SERIAL.println("Data saved into EEPROM");
+    // USE_SERIAL.println(wTarget);
     
             
   }
 
   if ((millis() - timeStamp > fps) && (true)) {
+
+    if (alpha > 0) alpha = alpha - 0.001;
+    else alpha = 0.0;
 
     timeStamp = millis();
     // needsUpdate = false;
@@ -385,9 +392,9 @@ void loop() {
       colorEffect.h = newH;
       colorEffect.v = newV;
       
-      USE_SERIAL.print(colorEffect.h);
-      USE_SERIAL.print(" ");
-      USE_SERIAL.println(colorEffect.v);
+      // // USE_SERIAL.print(colorEffect.h);
+      // USE_SERIAL.print(" ");
+      // USE_SERIAL.println(colorEffect.v);
       
     }
   
