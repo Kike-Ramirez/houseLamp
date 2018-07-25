@@ -29,6 +29,19 @@
 #include <FastLED.h>
 #include <EEPROM.h>
 #include <SimplexNoise.h>
+#include <ChainableLED.h>
+#include <Ticker.h>  //Ticker Library
+ 
+Ticker looper, sleep, activity;
+
+int NUM_LEDS = 1;
+int PIN_CLK = 19;
+int PIN_DATA = 20;
+
+float hue = 0.4;
+boolean up = true;
+
+ChainableLED indicator(D2, D1, NUM_LEDS); //defines the pin used on arduino.
 
 
 #define LED_RED     LED_BUILTIN
@@ -49,6 +62,8 @@ float saveTimer = 10000.0;
 
 float deltaAnim = 0.04;
 // bool needsUpdate = true;
+bool activityState = false;
+int activityBlinks = 6.0;
 
 
 CHSV colorSet = CHSV(0, 0, 0);
@@ -107,7 +122,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
             break;
         case WStype_TEXT:
             USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
-
+            
+            activity.attach(0.04, activityIndicator);
+            
             if(payload[0] == 'h') {
 
                 // decode rgb data
@@ -160,8 +177,55 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 }
 
+void sinusRed() {
+
+  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
+  indicator.setColorHSB(0, 0.0,1.0, brightness);
+}
+
+void sinusGreen() {
+
+  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 100.0 ));
+  indicator.setColorHSB(0, 0.3333,1.0, brightness);
+}
+
+void sinusBlue() {
+
+  float brightness = 0.05 * ( 0.5 + 0.5 * sin( millis() / 500.0 ));
+  indicator.setColorHSB(0, 0.6666,1.0, brightness);
+}
+
+void goToSleepIndicator() {
+
+  indicator.setColorHSB(0, 0.0, 0.0, 0.0);
+  looper.detach();
+  
+}
+
+void activityIndicator() {
+
+  activityBlinks = activityBlinks - 1.0;
+  
+  // when the counter reaches a certain value, start blinking like crazy
+  if (activityBlinks >= 0) {
+    activityState = !activityState;
+    indicator.setColorHSB(0, 0.0, 0.0, 0.05 * activityState);
+  }
+  // when the counter reaches yet another value, stop blinking
+  else {
+    activity.detach();
+    activityBlinks = 6.0;
+    looper.detach();
+    looper.attach(0.1, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
+    sleep.once(30.0, goToSleepIndicator);
+  }
+}
+
 void setup() {
     //USE_SERIAL.begin(921600);
+    looper.attach(0.1, sinusRed); //Use <strong>attach_ms</strong> if you need time in ms    
+    // indicator.setColorHSB(0, 0.0, 1.0, 0.1);
+    
     USE_SERIAL.begin(115200);
 
     USE_SERIAL.setDebugOutput(false);
@@ -179,6 +243,10 @@ void setup() {
         USE_SERIAL.flush();
         delay(1000);
     }
+
+    looper.detach();
+    looper.attach(0.1, sinusGreen); //Use <strong>attach_ms</strong> if you need time in ms    
+
 
     // Init LED Strip...
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
@@ -223,6 +291,8 @@ void setup() {
     // handle index
     server.on("/", []() {
       server.send(200, "text/html", html);
+      activity.attach(0.04, activityIndicator);
+
     });
 
     server.begin();
@@ -230,6 +300,11 @@ void setup() {
     // Add service to MDNS
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 81);
+
+    looper.detach();
+    looper.attach(0.1, sinusBlue); //Use <strong>attach_ms</strong> if you need time in ms    
+    sleep.once(30.0, goToSleepIndicator);
+
 
 }
 
