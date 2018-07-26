@@ -78,7 +78,7 @@ bool waveEffect = false;
 #define NUM_LEDS 10
 
 // Arduino Data pin that led data will be written out over
-#define DATA_PIN 1
+#define DATA_PIN 6
 
 // Object representing the whole strip.
 CRGB leds[NUM_LEDS];
