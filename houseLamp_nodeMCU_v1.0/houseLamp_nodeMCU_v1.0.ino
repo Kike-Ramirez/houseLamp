@@ -78,7 +78,9 @@ bool waveEffect = false;
 #define NUM_LEDS 10
 
 // Arduino Data pin that led data will be written out over
-#define DATA_PIN 6
+#define DATA_PIN_A 5
+#define DATA_PIN_B 6
+#define DATA_PIN_C 7
 
 // Object representing the whole strip.
 CRGB leds[NUM_LEDS];
@@ -251,7 +253,9 @@ void setup() {
 
 
     // Init LED Strip...
-    FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+    FastLED.addLeds<WS2811, DATA_PIN_A, RGB>(leds, NUM_LEDS);
+    FastLED.addLeds<WS2811, DATA_PIN_B, RGB>(leds, NUM_LEDS);
+    FastLED.addLeds<WS2811, DATA_PIN_C, RGB>(leds, NUM_LEDS);
   
     // Launch test sequence at start
     testSequence();
